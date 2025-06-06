@@ -1,0 +1,152 @@
+﻿@page "/reservations/add"
+@using Microsoft.EntityFrameworkCore
+@using WiiZoneNowy.Data
+@inject IDbContextProvider DbContextProvider
+@inject NavigationManager nav
+@rendermode InteractiveServer
+
+<h3 class="mb-4">Add new Reservation</h3>
+
+<EditForm Model="reservation" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    
+    <div class="mb-3">
+        <label class="form-label">Game</label>
+        <InputSelect class="form-select" @bind-Value="reservation.GameId">
+            <option value="">-- Select Game --</option>
+            @foreach (var g in AvailableGames)
+            {
+                <option value="@g.GameId">@g.Title (@(g.IsReserved ? "Unavailable" : "Available"))</option>
+            }
+        </InputSelect>
+        @if (isInvalidGame)
+        {
+            <div class="text-danger small mt-1">Please select an available game.</div>
+        }
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Client</label>
+        <InputSelect class="form-select" @bind-Value="reservation.ClientId">
+            <option value="">-- Select Client --</option>
+            @foreach (var c in allClients)
+            {
+                <option value="@c.ClientId">@c.Name</option>
+            }
+        </InputSelect>
+        @if (isInvalidClient)
+        {
+            <div class="text-danger small mt-1">Please select a client.</div>
+        }
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Start Date</label>
+        <InputDate class="form-control" @bind-Value="reservation.StartDate" />
+        <ValidationMessage For="@(() => reservation.StartDate)" />
+        @if (isInvalidStartDate)
+        {
+            <div class="text-danger small mt-1">Start date must be today or later.</div>
+        }
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">End Date</label>
+        <InputDate class="form-control" @bind-Value="reservation.EndDate" />
+        <ValidationMessage For="@(() => reservation.EndDate)" />
+        @if (isInvalidEndDate)
+        {
+            <div class="text-danger small mt-1">End date must be on or after Start date.</div>
+        }
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle me-2"></i> Create
+        </button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+            <i class="bi bi-x-circle me-2"></i> Cancel
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private Reservation reservation = new();
+    private List<Game> allGames = new();
+    private List<Client> allClients = new();
+    private IEnumerable<Game> AvailableGames => allGames.Where(g => !g.IsReserved);
+
+    private bool isInvalidGame = false;
+    private bool isInvalidClient = false;
+    private bool isInvalidStartDate = false;
+    private bool isInvalidEndDate = false;
+    
+
+    protected override async Task OnInitializedAsync()
+    {
+        var db = DbContextProvider.GetDbContext();
+        allGames = await db.Games
+        .Include(g => g.Reservations)
+        .ToListAsync();
+
+        allClients = await db.Clients.ToListAsync();
+        
+        reservation.StartDate = DateTime.Today;
+        reservation.EndDate = DateTime.Today.AddDays(7);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var db = DbContextProvider.GetDbContext();
+        isInvalidGame = isInvalidClient = isInvalidStartDate = isInvalidEndDate = false;
+        bool hasError = false;
+
+        if (reservation.GameId == 0 || !AvailableGames.Any(g => g.GameId == reservation.GameId)){
+            isInvalidGame = true;
+            hasError = true;
+        }
+
+        if (reservation.ClientId == 0 || !allClients.Any(c => c.ClientId == reservation.ClientId))
+        {
+            isInvalidClient = true;
+            hasError = true;
+        }
+
+        if (reservation.StartDate < DateTime.Today)
+        {
+            isInvalidStartDate = true;
+            hasError = true;
+        }
+
+        if (reservation.EndDate < reservation.StartDate)
+        {
+            isInvalidEndDate = true;
+            hasError = true;
+        }
+
+        if (hasError)
+        {
+            return;
+        }
+
+        reservation.IsReturned = false;
+
+        var game = await db.Games.FirstOrDefaultAsync(g => g.GameId == reservation.GameId);
+        if (game != null)
+        {
+            game.TimesRented += 1;
+            game.IsReserved = true;
+        }
+
+        db.Reservations.Add(reservation);
+        await db.SaveChangesAsync();
+
+        nav.NavigateTo("/reservations");
+    }
+
+
+    private void Cancel()
+    {
+        nav.NavigateTo("/reservations");
+    }
+}

@@ -1,0 +1,56 @@
+﻿@page "/clients/add"
+@using WiiZoneNowy.Data
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject IDbContextProvider DbContextProvider
+
+<h3>Add New Client</h3>
+
+<EditForm Model="client" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+    
+    <div class="mb-3">
+        <label class="form-label">Name</label>
+        <InputText class="form-control" @bind-Value="client.Name" />
+        <ValidationMessage For="@(() => client.Name)" /> 
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Email</label>
+        <InputText class="form-control" @bind-Value="client.Email" />
+        <ValidationMessage For="@(() => client.Email)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Phone</label>
+        <InputText class="form-control" @bind-Value="client.Phone" />
+        <ValidationMessage For="@(() => client.Phone)" />
+    </div>
+
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle me-2"></i>
+            Add Client
+        </button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+            <i class="bi bi-x-circle me-2"></i>
+            Cancel
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private Client client = new();
+
+    private async Task HandleValidSubmit()
+    {
+        var db = DbContextProvider.GetDbContext();
+        db.Clients.Add(client);
+        await db.SaveChangesAsync();
+        nav.NavigateTo("/clients");
+    }
+    private void Cancel()
+    {
+        nav.NavigateTo("/clients");
+    }
+}

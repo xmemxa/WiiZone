@@ -1,0 +1,36 @@
+﻿@inherits LayoutComponentBase
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary navbar-custom">
+        <div class="container-fluid navbar-custom">
+            <a class="navbar-brand-custom" href="/">WiiZone</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
+                    data-bs-target="#mainNavbar" aria-controls="mainNavbar"
+                    aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <ul class="navbar-nav me-auto navbar-custom" style="list-style: none; margin: 0; padding: 0;">
+                    <li style="margin: 0; padding: 0;">
+                        <NavLink class="navbar-item" href="/games" Match="NavLinkMatch.All">
+                            Games
+                        </NavLink>
+                    </li>
+                    <li style="margin: 0; padding: 0;">
+                        <NavLink class="navbar-item" href="/clients">
+                            Clients
+                        </NavLink>
+                    </li>
+                    <li style="margin: 0; padding: 0;">
+                        <NavLink class="navbar-item" href="/reservations">
+                            Reservations
+                        </NavLink>
+                    </li>
+                    <li><NavLink class="navbar-item" href="/tags">
+                        Tags
+                    </NavLink></li>
+                    <li><NavLink class="navbar-item" href="/settings">
+                        Settings
+                    </NavLink></li>
+                </ul>
+            </div>
+        </div>
+</nav>

@@ -1,0 +1,252 @@
+﻿@page "/reservations/edit/{reservationId:int}"
+@using Microsoft.EntityFrameworkCore
+@using WiiZoneNowy.Data
+@inject IDbContextProvider DbContextProvider
+@inject NavigationManager nav
+@rendermode InteractiveServer
+
+
+<h3 class="mb-4">Edit Reservation</h3>
+
+@if (isLoading)
+{
+    <div class="text-center py-5">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+    </div>
+}
+else if (notFound)
+{
+    <div class="alert alert-warning">
+        Reservation not found. <button class="btn btn-link p-0" @onclick="GoBack">Go back</button>
+    </div>
+}
+else
+{
+    <EditForm Model="reservationModel" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+        
+        <div class="mb-3">
+            <label class="form-label">Game</label>
+            <InputSelect class="form-select" @bind-Value="reservationModel.GameId">
+                <option value="">-- Select Game --</option>
+                @foreach (var g in allGames)
+                {
+                    <option value="@g.GameId" disabled="@(g.GameId != originalGameId && g.IsReserved)">
+                        @g.Title (@(g.IsReserved ? "Unavailable" : "Available"))
+                    </option>
+                }
+            </InputSelect>
+            @if (isInvalidGame)
+            {
+                <div class="text-danger small mt-1">Please select a valid game.</div>
+            }
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Client</label>
+            <InputSelect class="form-select" @bind-Value="reservationModel.ClientId">
+                <option value="">-- Select Client --</option>
+                @foreach (var c in allClients)
+                {
+                    <option value="@c.ClientId">@c.Name</option>
+                }
+            </InputSelect>
+            @if (isInvalidClient)
+            {
+                <div class="text-danger small mt-1">Please select a client.</div>
+            }
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Start Date</label>
+            <InputDate class="form-control" @bind-Value="reservationModel.StartDate" />
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">End Date</label>
+            <InputDate class="form-control" @bind-Value="reservationModel.EndDate" />
+            @if (isInvalidEndDate)
+            {
+                <div class="text-danger small mt-1">End date must be on or after Start date.</div>
+            }
+        </div>
+        
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-2"></i> Save
+            </button>
+            <button type="button" class="btn btn-secondary" @onclick="GoBack">
+                <i class="bi bi-x-circle me-2"></i> Cancel
+            </button>
+        </div>
+    </EditForm>
+
+
+@code {
+    [Parameter] public int reservationId { get; set; }
+
+    private Reservation reservationModel;
+    private List<Game> allGames = new();
+    private List<Client> allClients = new();
+    
+    private int originalGameId;
+    private bool originalIsReturned;
+    
+    private bool isInvalidGame = false;
+    private bool isInvalidClient = false;
+    private bool isInvalidStartDate = false;
+    private bool isInvalidEndDate = false;
+
+    private bool isLoading = true;
+    private bool notFound = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var db = DbContextProvider.GetDbContext();
+        allGames = await db.Games
+            .Include(g => g.Reservations)
+            .ToListAsync();
+
+        allClients = await db.Clients.ToListAsync();
+        
+        var existing = await db.Reservations
+            .Include(r => r.Game)
+            .Include(r => r.Client)
+            .FirstOrDefaultAsync(r => r.ReservationId == reservationId);
+
+        if (existing == null)
+        {
+            notFound = true;
+            isLoading = false;
+            return;
+        }
+        
+        reservationModel = new Reservation
+        {
+            ReservationId = existing.ReservationId,
+            GameId = existing.GameId,
+            ClientId = existing.ClientId,
+            StartDate = existing.StartDate,
+            EndDate = existing.EndDate,
+            IsReturned = existing.IsReturned
+        };
+        
+        originalGameId = existing.GameId;
+        originalIsReturned = existing.IsReturned;
+
+        isLoading = false;
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var db = DbContextProvider.GetDbContext();
+        isInvalidGame = isInvalidClient = isInvalidStartDate = isInvalidEndDate = false;
+        bool hasError = false;
+        
+        if (reservationModel.GameId == 0)
+        {
+            isInvalidGame = true;
+            hasError = true;
+        }
+        else
+        {
+            if (reservationModel.GameId != originalGameId)
+            {
+                var newGame = allGames.FirstOrDefault(g => g.GameId == reservationModel.GameId);
+                if (newGame == null || newGame.IsReserved)
+                {
+                    isInvalidGame = true;
+                    hasError = true;
+                }
+            }
+        }
+        
+        if (reservationModel.ClientId == 0)
+        {
+            isInvalidClient = true;
+            hasError = true;
+        }
+        else if (!allClients.Any(c => c.ClientId == reservationModel.ClientId))
+        {
+            isInvalidClient = true;
+            hasError = true;
+        }
+        
+        if (reservationModel.EndDate < reservationModel.StartDate)
+        {
+            isInvalidEndDate = true;
+            hasError = true;
+        }
+
+        if (hasError)
+        {
+            return;
+        }
+        
+        var toEdit = await db.Reservations
+            .Include(r => r.Game)
+            .FirstOrDefaultAsync(r => r.ReservationId == reservationModel.ReservationId);
+
+        if (toEdit == null)
+        {
+            notFound = true;
+            return;
+        }
+        
+        if (reservationModel.GameId != originalGameId)
+        {
+            if (!originalIsReturned)
+            {
+                var oldGame = await db.Games.FindAsync(originalGameId);
+                if (oldGame != null)
+                {
+                    oldGame.IsReserved = false;
+                }
+            }
+            
+            var newGame = await db.Games.FindAsync(reservationModel.GameId);
+            if (newGame != null)
+            {
+                newGame.IsReserved = true;
+            }
+
+            toEdit.GameId = reservationModel.GameId;
+        }
+        
+        if (reservationModel.IsReturned != originalIsReturned)
+        {
+            toEdit.IsReturned = reservationModel.IsReturned;
+            if (reservationModel.IsReturned)
+            {
+                var g = await db.Games.FindAsync(toEdit.GameId);
+                if (g != null)
+                {
+                    g.IsReserved = false;
+                }
+            }
+            else
+            {
+                var g = await db.Games.FindAsync(toEdit.GameId);
+                if (g != null)
+                {
+                    g.IsReserved = true;
+                }
+            }
+        }
+        
+        toEdit.ClientId = reservationModel.ClientId;
+        toEdit.StartDate = reservationModel.StartDate;
+        toEdit.EndDate = reservationModel.EndDate;
+
+        await db.SaveChangesAsync();
+        nav.NavigateTo("/reservations");
+    }
+
+    private void GoBack()
+    {
+        nav.NavigateTo("/reservations");
+    }
+}}

@@ -1,0 +1,151 @@
+﻿@page "/tags"
+@using Microsoft.EntityFrameworkCore
+@using WiiZoneNowy.Data
+@rendermode InteractiveServer
+@inject IDbContextProvider DbContextProvider
+@inject NavigationManager nav
+
+<h2 class="mb-4">Game Tags</h2>
+
+<div class="mb-4 position-relative" style="max-width:420px;">
+    <i class="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+    <input type="text"
+           class="form-control ps-5"
+           placeholder="Search tags…"
+           @bind="searchTerm"
+           @bind:event="oninput" />
+</div>
+
+
+<EditForm Model="newTag" OnValidSubmit="AddTag">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="input-group mb-3" style="max-width: 420px;">
+        <InputText class="form-control" placeholder="New tag name…" @bind-Value="newTag.Name" />
+        <button class="btn btn-success" type="submit">
+            <i class="bi bi-plus-circle me-1"></i> Add
+        </button>
+    </div>
+</EditForm>
+
+@if (!string.IsNullOrEmpty(errorMessage))
+{
+    <div class="alert alert-danger py-2"><i class="bi bi-exclamation-triangle me-1"></i>@errorMessage</div>
+}
+
+<div class="card shadow-sm">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0">
+            <thead class="table-light">
+            <tr>
+                <th style="width:55%;">Tag</th>
+                <th style="width:25%;">Games using</th>
+                <th style="width:20%;"></th>
+            </tr>
+            </thead>
+            <tbody>
+            @if (tags is null)
+            {
+                <tr><td colspan="3" class="text-center py-4">Loading…</td></tr>
+            }
+            else if (!tags.Any())
+            {
+                <tr><td colspan="3" class="text-center py-4 text-muted">No tags yet</td></tr>
+            }
+            else
+            {
+                @foreach (var t in FilteredTags)
+                {
+                    <tr>
+                        <td class="align-middle">@t.Name</td>
+                        <td class="align-middle">@t.UsageCount</td>
+                        <td class="align-middle text-end">
+                            <button class="btn btn-sm btn-danger"
+                                    disabled="@(!(t.UsageCount == 0))"
+                                    title="Delete tag"
+                                    @onclick="() => DeleteTag(t.TagId)">
+                                <i class="bi bi-trash-fill"></i>
+                                Delete
+                            </button>
+                        </td>
+                    </tr>
+                }
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@code {
+    private class TagView
+    {
+        public int TagId { get; init; }
+        public string Name { get; init; } = default!;
+        public int UsageCount { get; init; }
+    }
+
+    private List<TagView>? tags;
+    private Tag newTag = new();
+    private string? errorMessage;
+    private string searchTerm = string.Empty;
+
+    private IEnumerable<TagView> FilteredTags =>
+        string.IsNullOrWhiteSpace(searchTerm)
+            ? tags ?? Enumerable.Empty<TagView>()
+            : (tags ?? Enumerable.Empty<TagView>())
+            .Where(t => t.Name.Contains(searchTerm, StringComparison.OrdinalIgnoreCase));
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTags();
+    }
+    
+    private async Task AddTag()
+    {
+        var db = DbContextProvider.GetDbContext();
+        errorMessage = null;
+
+        var name = newTag.Name?.Trim();
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            errorMessage = "Tag name cannot be empty.";
+            return;
+        }
+        
+        db.Tags.Add(new Tag { Name = name });
+        await db.SaveChangesAsync();
+
+        newTag = new();       
+        await LoadTags();
+    }
+
+    private async Task DeleteTag(int tagId)
+    {
+        var db = DbContextProvider.GetDbContext();
+        var tag = await db.Tags
+                          .Include(t => t.GameTags)
+                          .FirstOrDefaultAsync(t => t.TagId == tagId);
+
+        if (tag is null || tag.GameTags.Any()) return; 
+
+        db.Tags.Remove(tag);
+        await db.SaveChangesAsync();
+        await LoadTags();
+    }
+    
+    private async Task LoadTags()
+    {
+        var db = DbContextProvider.GetDbContext();
+        tags = await db.Tags
+            .Select(t => new TagView
+            {
+                TagId      = t.TagId,
+                Name       = t.Name,
+                UsageCount = t.GameTags.Count
+            })
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+        StateHasChanged();
+    }
+}

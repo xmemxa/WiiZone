@@ -1,0 +1,121 @@
+﻿@page "/games/add"
+@using Microsoft.EntityFrameworkCore
+@using WiiZoneNowy.Data
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject IDbContextProvider DbContextProvider
+
+<h3>Add New Game</h3>
+
+<EditForm Model="game" OnValidSubmit="HandleValidSubmit">
+    <DataAnnotationsValidator />
+
+    <div class="mb-3">
+        <label class="form-label">Title</label>
+        <InputText class="form-control" @bind-Value="game.Title" />
+        <ValidationMessage For="@(() => game.Title)" />
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Cover Image URL</label>
+        <InputText class="form-control" @bind-Value="game.CoverImage" />
+        <ValidationMessage For="@(() => game.CoverImage)" />
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Genre</label>
+        <InputText class="form-control" @bind-Value="game.Genre" />
+        <ValidationMessage For="@(() => game.Genre)" />
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Tags</label>
+
+        <div class="d-flex flex-wrap gap-2">
+            @foreach (var tag in allTags)
+            {
+                <div class="form-check me-3">
+                    <input type="checkbox"
+                           class="form-check-input"
+                           checked="@selectedTagIds.Contains(tag.TagId)"
+                           @onchange="(ChangeEventArgs e) =>
+                               ToggleTag(tag.TagId, e.Value as bool? ?? false)" />
+
+                    <label class="form-check-label ms-1">@tag.Name</label>
+                </div>
+            }
+        </div>
+    </div>
+
+
+    <div class="mb-3">
+        <label class="form-label">Release Year</label>
+        <InputNumber class="form-control" 
+                     @bind-Value="game.ReleaseYear" 
+                     min="2006" max="2020" />
+        <ValidationMessage For="@(() => game.ReleaseYear)" />
+    </div>
+    
+    <div class="mb-3">
+        <label class="form-label">Price $</label>
+        <InputNumber class="form-control" 
+                     @bind-Value="game.Price" 
+                     step="0.01" 
+                     min="1" max="99.99" />
+        <ValidationMessage For="@(() => game.Price)" />
+    </div>
+    
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-circle me-2"></i>
+            Add Game
+        </button>
+        <button type="button" class="btn btn-secondary" @onclick="Cancel">
+            <i class="bi bi-x-circle me-2"></i>
+            Cancel
+        </button>
+    </div>
+</EditForm>
+
+@code {
+    private List<Tag>      allTags         = new();
+    private HashSet<int>   selectedTagIds  = new();
+    
+    private Game game = new()
+    {
+        IsReserved  = false,
+        TimesRented = 0,
+        GameTags    = new()         
+    };
+    
+    protected override async Task OnInitializedAsync()
+    {
+        var db = DbContextProvider.GetDbContext();
+        allTags = await db.Tags
+            .OrderBy(t => t.Name)
+            .ToListAsync();
+    }
+    
+    void ToggleTag(int tagId, bool isChecked)
+    {
+        if (isChecked) selectedTagIds.Add(tagId);
+        else           selectedTagIds.Remove(tagId);
+    }
+    
+    private async Task HandleValidSubmit()
+    {
+        var db = DbContextProvider.GetDbContext();
+        foreach (var id in selectedTagIds)
+        {
+            game.GameTags.Add(new GameTag { TagId = id });
+        }
+
+        db.Games.Add(game);
+        await db.SaveChangesAsync();
+
+        nav.NavigateTo("/games");
+    }
+    
+    private void Cancel() => nav.NavigateTo("/games");
+}
+

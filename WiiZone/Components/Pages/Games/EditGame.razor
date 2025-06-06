@@ -1,0 +1,130 @@
+﻿@page "/games/edit/{GameId:int}"
+@using Microsoft.EntityFrameworkCore
+@using WiiZoneNowy.Data
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject IDbContextProvider DbContextProvider
+
+<h3>Edit Game</h3>
+
+@if (game is null)
+{
+    <p><em>Loading …</em></p>
+}
+else
+{
+    <EditForm Model="game" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+        
+        <div class="mb-3">
+            <label class="form-label">Title</label>
+            <InputText class="form-control" @bind-Value="game.Title" />
+            <ValidationMessage For="@(() => game.Title)" />
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Cover Image URL</label>
+            <InputText class="form-control" @bind-Value="game.CoverImage" />
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Genre</label>
+            <InputText class="form-control" @bind-Value="game.Genre" />
+            <ValidationMessage For="@(() => game.Genre)" />
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Release Year</label>
+            <InputNumber class="form-control" @bind-Value="game.ReleaseYear" />
+            <ValidationMessage For="@(() => game.ReleaseYear)" />
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Price $</label>
+            <InputNumber class="form-control" step="0.01" @bind-Value="game.Price" />
+            <ValidationMessage For="@(() => game.Price)" />
+        </div>
+        
+        <div class="mb-3">
+            <label class="form-label">Tags</label>
+            <div class="d-flex flex-wrap gap-2">
+                @foreach (var tag in allTags)
+                {
+                    <div class="form-check">
+                        <input class="form-check-input"
+                               type="checkbox"
+                               checked="@selectedTagIds.Contains(tag.TagId)"
+                               @onchange="e => ToggleTag(tag.TagId, (bool)e.Value!)" />
+                        <label class="form-check-label">@tag.Name</label>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-primary">
+                <i class="bi bi-save me-2"></i> Save changes
+            </button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                <i class="bi bi-x-circle me-2"></i> Cancel
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int GameId { get; set; }
+
+    private Game?      game;
+    private List<Tag>  allTags          = new();
+    private HashSet<int> selectedTagIds = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        var db = DbContextProvider.GetDbContext();
+        game = await db.Games
+                       .Include(g => g.GameTags)
+                           .ThenInclude(gt => gt.Tag)
+                       .FirstOrDefaultAsync(g => g.GameId == GameId);
+
+        if (game is null)
+        {
+            nav.NavigateTo("/games");
+            return;
+        }
+        allTags = await db.Tags.ToListAsync();
+        selectedTagIds = game.GameTags.Select(gt => gt.TagId).ToHashSet();
+    }
+
+    void ToggleTag(int tagId, bool isChecked)
+    {
+        if (isChecked)
+            selectedTagIds.Add(tagId);
+        else
+            selectedTagIds.Remove(tagId);
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var db = DbContextProvider.GetDbContext();
+        var dbGame = await db.Games
+                             .Include(g => g.GameTags)
+                             .FirstAsync(g => g.GameId == game!.GameId);
+        
+        db.Entry(dbGame).CurrentValues.SetValues(game);
+        
+        dbGame.GameTags.RemoveAll(gt => !selectedTagIds.Contains(gt.TagId));
+        
+        var newLinks = selectedTagIds
+            .Where(id => !dbGame.GameTags.Any(gt => gt.TagId == id))
+            .Select(id => new GameTag { GameId = dbGame.GameId, TagId = id });
+
+        dbGame.GameTags.AddRange(newLinks);
+
+        await db.SaveChangesAsync();
+        nav.NavigateTo("/games");
+    }
+
+    private void Cancel() => nav.NavigateTo("/games");
+}

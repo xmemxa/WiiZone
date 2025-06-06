@@ -1,0 +1,77 @@
+﻿@page "/clients/edit/{id:int}"
+@using WiiZoneNowy.Data
+@rendermode InteractiveServer
+@inject NavigationManager nav
+@inject IDbContextProvider DbContextProvider
+
+<h3>Edit Client</h3>
+
+@if (client == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <EditForm Model="client" OnValidSubmit="HandleValidSubmit">
+        <DataAnnotationsValidator />
+
+        <div class="mb-3">
+            <label class="form-label">Name</label>
+            <InputText class="form-control" @bind-Value="client.Name" />
+            <ValidationMessage For="@(() => client.Name)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Email</label>
+            <InputText class="form-control" @bind-Value="client.Email" />
+            <ValidationMessage For="@(() => client.Email)" />
+        </div>
+
+        <div class="mb-3">
+            <label class="form-label">Phone</label>
+            <InputText class="form-control" @bind-Value="client.Phone" />
+            <ValidationMessage For="@(() => client.Phone)" />
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">
+                <i class="bi bi-check-circle me-2"></i>
+                Save changes
+            </button>
+            <button type="button" class="btn btn-secondary" @onclick="Cancel">
+                <i class="bi bi-x-circle me-2"></i>
+                Cancel
+            </button>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int id { get; set; }
+
+    private Client? client;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var db = DbContextProvider.GetDbContext();
+        client = await db.Clients.FindAsync(id);
+        if (client == null)
+        {
+            nav.NavigateTo("/clients");
+        }
+    }
+
+    private async Task HandleValidSubmit()
+    {
+        var db = DbContextProvider.GetDbContext();
+        db.Clients.Update(client!);
+        await db.SaveChangesAsync();
+        nav.NavigateTo("/clients");
+    }
+
+    private void Cancel()
+    {
+        nav.NavigateTo("/clients");
+    }
+}

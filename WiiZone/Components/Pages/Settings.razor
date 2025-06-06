@@ -1,0 +1,42 @@
+﻿@page "/settings"
+@using WiiZoneNowy.Data
+@inject IDbContextProvider DbContextProvider
+@rendermode InteractiveServer
+
+<h3>Select Database</h3>
+
+<select class="form-select" @bind="SelectedKey">
+    @foreach (var pair in Connections)
+    {
+        <option value="@pair.Key">@pair.Key</option>
+    }
+</select>
+
+<button class="btn btn-primary mt-2" @onclick="SwitchDb">Switch</button>
+
+@code {
+    private string SelectedKey = "DefaultConnection";
+    private Dictionary<string, string> Connections = new();
+
+    protected override void OnInitialized()
+    {
+        var cfg = new ConfigurationBuilder()
+            .AddJsonFile("appsettings.json")
+            .Build();
+
+        Connections = cfg.GetSection("ConnectionStrings")
+            .GetChildren()
+            .ToDictionary(x => x.Key, x => x.Value ?? "");
+
+        SelectedKey = DBName.Name;
+    }
+
+    private void SwitchDb()
+    {
+        DBName.Name = SelectedKey;
+        DbContextProvider.SetConnection();
+        NavigationManager.NavigateTo("/", forceLoad: true);
+    }
+
+    [Inject] NavigationManager NavigationManager { get; set; }
+}
