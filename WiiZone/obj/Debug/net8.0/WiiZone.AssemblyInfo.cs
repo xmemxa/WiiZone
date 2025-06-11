@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("WiiZone")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ec26f186587db4700f123057fe6a6a26e8b87d98")]
 [assembly: System.Reflection.AssemblyProductAttribute("WiiZone")]
 [assembly: System.Reflection.AssemblyTitleAttribute("WiiZone")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

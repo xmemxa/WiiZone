@@ -129,3 +129,4 @@ C:\Users\emili\RiderProjects\WiiZoneNowy\WiiZone\obj\Debug\net8.0\refint\WiiZone
 C:\Users\emili\RiderProjects\WiiZoneNowy\WiiZone\obj\Debug\net8.0\WiiZone.pdb
 C:\Users\emili\RiderProjects\WiiZoneNowy\WiiZone\obj\Debug\net8.0\WiiZone.genruntimeconfig.cache
 C:\Users\emili\RiderProjects\WiiZoneNowy\WiiZone\obj\Debug\net8.0\ref\WiiZone.dll
+C:\Users\emili\RiderProjects\WiiZoneNowy\WiiZone\obj\Debug\net8.0\WiiZone.sourcelink.json

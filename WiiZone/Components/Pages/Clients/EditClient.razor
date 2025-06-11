@@ -1,4 +1,5 @@
 ﻿@page "/clients/edit/{id:int}"
+@using Microsoft.EntityFrameworkCore
 @using WiiZoneNowy.Data
 @rendermode InteractiveServer
 @inject NavigationManager nav
@@ -74,4 +75,5 @@ else
     {
         nav.NavigateTo("/clients");
     }
+    
 }

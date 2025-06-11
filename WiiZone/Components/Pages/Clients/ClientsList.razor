@@ -20,7 +20,7 @@
                @bind="searchTerm"
                @bind:event="oninput"
                class="form-control ps-5"
-               placeholder="Search clients by name, email or phone number..." />
+               placeholder="Search clients by name, email or phone number..."/>
     </div>
 
     @if (!string.IsNullOrEmpty(errorMessage))
@@ -35,63 +35,63 @@
         <div class="table-responsive">
             <table class="table table-hover table-striped mb-0">
                 <thead class="table-light">
-                    <tr>
-                        <th style="width: 5%;">ID</th>
-                        <th style="width: 30%;">Client</th>
-                        <th style="width: 25%;">Contact</th>
-                        <th style="width: 10%;">Active</th>
-                        <th style="width: 10%;">Total</th>
-                        <th style="width: 20%;">Actions</th>
-                    </tr>
+                <tr>
+                    <th style="width: 5%;">ID</th>
+                    <th style="width: 30%;">Client</th>
+                    <th style="width: 25%;">Contact</th>
+                    <th style="width: 10%;">Active</th>
+                    <th style="width: 10%;">Total</th>
+                    <th style="width: 20%;">Actions</th>
+                </tr>
                 </thead>
                 <tbody>
-                    @if (clients == null)
+                @if (clients == null)
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-4">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading…</span>
+                            </div>
+                        </td>
+                    </tr>
+                }
+                else if (!FilteredClients.Any())
+                {
+                    <tr>
+                        <td colspan="6" class="text-center py-4 text-muted">
+                            No clients found
+                        </td>
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var client in FilteredClients)
                     {
                         <tr>
-                            <td colspan="6" class="text-center py-4">
-                                <div class="spinner-border text-primary" role="status">
-                                    <span class="visually-hidden">Loading…</span>
+                            <td class="align-middle">@client.ClientId</td>
+                            <td class="align-middle">
+                                <div class="fw-bold">@client.Name</div>
+                                <div class="text-muted small">@client.Email</div>
+                            </td>
+                            <td class="align-middle">@client.Phone</td>
+                            <td class="align-middle">@client.Reservations.Count(r => !r.IsReturned)</td>
+                            <td class="align-middle">@client.Reservations.Count</td>
+                            <td class="align-middle">
+                                <div class="d-flex gap-2 justify-content-end">
+                                    <button class="btn btn-sm btn-info flex-grow-1"
+                                            @onclick="@(() => nav.NavigateTo($"/clients/edit/{client.ClientId}"))">
+                                        <i class="bi bi-pencil-fill me-1"></i> Edit
+                                    </button>
+                                    <button class="btn btn-sm btn-danger flex-grow-1"
+                                            @onclick="@(() => DeleteClient(client.ClientId))"
+                                            title="Delete client">
+                                        <i class="bi bi-trash-fill me-1"></i> Delete
+                                    </button>
                                 </div>
                             </td>
                         </tr>
                     }
-                    else if (!FilteredClients.Any())
-                    {
-                        <tr>
-                            <td colspan="6" class="text-center py-4 text-muted">
-                                No clients found
-                            </td>
-                        </tr>
-                    }
-                    else
-                    {
-                        @foreach (var client in FilteredClients)
-                        {
-                            <tr>
-                                <td class="align-middle">@client.ClientId</td>
-                                <td class="align-middle">
-                                    <div class="fw-bold">@client.Name</div>
-                                    <div class="text-muted small">@client.Email</div>
-                                </td>
-                                <td class="align-middle">@client.Phone</td>
-                                <td class="align-middle">@client.Reservations.Count(r => !r.IsReturned)</td>
-                                <td class="align-middle">@client.Reservations.Count</td>
-                                <td class="align-middle">
-                                    <div class="d-flex gap-2 justify-content-end">
-                                        <button class="btn btn-sm btn-info flex-grow-1"
-                                                @onclick="@(() => nav.NavigateTo($"/clients/edit/{client.ClientId}"))">
-                                            <i class="bi bi-pencil-fill me-1"></i> Edit
-                                        </button>
-                                        <button class="btn btn-sm btn-danger flex-grow-1"
-                                                @onclick="@(() => DeleteClient(client.ClientId))"
-                                                title="Delete client">
-                                            <i class="bi bi-trash-fill me-1"></i> Delete
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        }
-                    }
+                }
                 </tbody>
             </table>
         </div>
@@ -114,16 +114,16 @@
     {
         var db = DbContextProvider.GetDbContext();
         clients = await db.Clients
-                          .Include(c => c.Reservations)
-                          .ToListAsync();
+            .Include(c => c.Reservations)
+            .ToListAsync();
     }
 
     private async Task DeleteClient(int clientId)
     {
         var db = DbContextProvider.GetDbContext();
         var client = await db.Clients
-                             .Include(c => c.Reservations)
-                             .FirstOrDefaultAsync(c => c.ClientId == clientId);
+            .Include(c => c.Reservations)
+            .FirstOrDefaultAsync(c => c.ClientId == clientId);
 
         if (client is null)
             return;
@@ -136,11 +136,12 @@
 
         db.Clients.Remove(client);
         await db.SaveChangesAsync();
-        
+
         clients = await db.Clients
-                          .Include(c => c.Reservations)
-                          .ToListAsync();
+            .Include(c => c.Reservations)
+            .ToListAsync();
         errorMessage = null;
         StateHasChanged();
     }
+
 }
